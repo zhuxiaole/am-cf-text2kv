@@ -28,30 +28,33 @@ export default {
             case "config":
             case myToken:
                 return createResponse(configHTML(url.hostname, token), 200, 'text/html; charset=UTF-8');
-            case "config/update.bat":
-                return createFileResponse(downloadScript('bat', url.hostname, token), 'update.bat');
+            case "config/update.ps1":
+                return createFileResponse(downloadScript('ps1', url.hostname, token), 'update.ps1');
             case "config/update.sh":
                 return createFileResponse(downloadScript('sh', url.hostname, token), 'update.sh');
             default:
-                return await handleFileOperation(KV, fileName, url);
+                return await handleFileOperation(KV, fileName, request);
         }
     }
 };
 
-async function handleFileOperation(KV, fileName, url) {
-    const text = url.searchParams.get('text') || null;
-    const b64 = url.searchParams.get('b64') || null;
+async function handleFileOperation(KV, fileName, request) {
 
-    if (text === null && b64 === null) {
+    if (request.method === "POST") {
+        // POST 请求，修改文件内容
+        const text = (await request.text())?.trim() || ""
+
+        const valueToStore = text === "" ? "" : base64Decode(replaceSpaceWithPlus(text));
+
+        await fileExists(KV, fileName);
+        await KV.put(fileName, valueToStore);
+        return createResponse(valueToStore, 200, 'text/plain; charset=utf-8');
+    } else {
+        // 非 POST 请求，返回文件内容
         const value = await KV.get(fileName);
-        return createResponse(value || 'File not found', 200, 'text/plain; charset=utf-8');
+        
+        return createResponse(value || '', 200, 'text/plain; charset=utf-8');
     }
-
-    await fileExists(KV, fileName);
-
-    const valueToStore = b64 !== null ? base64Decode(replaceSpaceWithPlus(b64)) : text;
-    await KV.put(fileName, valueToStore);
-    return createResponse(valueToStore, 200, 'text/plain; charset=utf-8');
 }
 
 async function fileExists(KV, filename) {
@@ -83,42 +86,71 @@ function createFileResponse(content, filename) {
 }
 
 function downloadScript(type, domain, token) {
-    if (type === 'bat') {
-        return [
-            `@echo off`,
-            `chcp 65001`,
-            `setlocal`,
-            ``,
-            `set "DOMAIN=${domain}"`,
-            `set "TOKEN=${token}"`,
-            ``,
-            `set "FILENAME=%~nx1"`,
-            ``,
-            `for /f "delims=" %%i in ('powershell -command "$content = ((Get-Content -Path '%cd%/%FILENAME%' -Encoding UTF8) | Select-Object -First 65) -join [Environment]::NewLine; [convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($content))"') do set "BASE64_TEXT=%%i"`,
-            ``,
-            `set "URL=https://%DOMAIN%/%FILENAME%?token=%TOKEN%^&b64=%BASE64_TEXT%"`,
-            ``,
-            `start %URL%`,
-            `endlocal`,
-            ``,
-            `echo Update completed, closing window in 5 seconds...`,
-            `timeout /t 5 >nul`,
-            `exit`
-        ].join('\r\n');
+    if (type === 'ps1') {
+        return `
+$DOMAIN="${domain}"
+$TOKEN="${token}"
+
+Add-Type -AssemblyName System.Windows.Forms
+[System.Windows.Forms.Application]::EnableVisualStyles()
+
+$filePicker = New-Object System.Windows.Forms.OpenFileDialog
+
+Write-Host "选择要上传的文件\`n"
+
+$res = $filePicker.ShowDialog()
+
+if ($res -eq "OK") {
+    $filePath = $filePicker.FileName
+    $fileName = [System.IO.Path]::GetFileName("$filePath")
+    $content = (Get-Content -Path "$filePath" -Encoding UTF8) -join [Environment]::NewLine
+    $base64 = [convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($content))
+    $url = "https://$DOMAIN/$fileName" + "?token=$TOKEN"
+
+    try {
+        Invoke-WebRequest $url -Method POST -Body $base64 | Out-Null
+        Write-Host "上传成功\`n"
+    } catch {
+        $errorMessage = $_.ErrorDetails.Message
+        Write-Host "上传失败：$errorMessage\`n"
+    }
+
+    Write-Host "5秒后退出"
+    Start-Sleep -s 5
+}
+
+        `;
     } else if (type === 'sh') {
         return `#!/bin/bash
 export LANG=zh_CN.UTF-8
 DOMAIN="${domain}"
 TOKEN="${token}"
+
 if [ -n "$1" ]; then 
   FILENAME="$1"
 else
-  echo "No filename provided"
+  echo "未输入要上传的文件\n"
   exit 1
 fi
-BASE64_TEXT=$(head -n 65 "$FILENAME" | base64 -w 0)
-curl -k "https://$DOMAIN/$FILENAME?token=$TOKEN&b64=$BASE64_TEXT"
-echo "Update completed"
+
+BASE64_TEXT=$(cat "$FILENAME" | base64 -w 0)
+
+URL="https://$DOMAIN/$FILENAME?token=$TOKEN"
+
+response=$(curl -o /dev/null  -s -d "$BASE64_TEXT" -X POST $URL -w '%{http_code} %{errormsg}')
+
+[[ $response =~ ((^[0-9]+) (.*)) ]]
+
+http_code=\$\{BASH_REMATCH[2]\}
+
+errormsg=\$\{BASH_REMATCH[3]\}
+
+if [ $http_code = "200" ];then
+  echo -e "上传成功\n"
+else
+  echo -e "上传失败: $errormsg\n"
+fi
+
 `;
     }
 }
@@ -167,8 +199,8 @@ function configHTML(domain, token) {
                 Token: <strong>${token}</strong> <br><br>
                 <pre>注意! URL长度内容所限，脚本更新方式一次最多更新65行内容</pre><br>
                 Windows脚本:  
-                <button type="button" onclick="window.open('https://${domain}/config/update.bat?token=${token}', '_blank')">点击下载</button><br>
-                <pre>使用方法: <code>&lt;update.bat&nbsp;ip.txt&gt;</code></pre><br>
+                <button type="button" onclick="window.open('https://${domain}/config/update.ps1?token=${token}', '_blank')">点击下载</button><br>
+                <pre>使用方法: <code>双击运行</code></pre><br>
                 Linux脚本:  
                 <code>&lt;curl&nbsp;https://${domain}/config/update.sh?token=${token}&nbsp;-o&nbsp;update.sh&nbsp;&&&nbsp;chmod&nbsp;+x&nbsp;update.sh&gt;</code><br>
                 <pre>使用方法: <code>&lt;./update.sh&nbsp;ip.txt&gt;</code></pre><br><br>
