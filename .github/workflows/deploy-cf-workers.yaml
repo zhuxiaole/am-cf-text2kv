@@ -53,7 +53,7 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           preCommands: |
             sed -i 's/^name = ".*"$/name = "${{matrix.project.name}}"/g' wrangler.toml
-            sed -i 's/^binding = ".*", id = ".*"$/binding = "${{matrix.project.kv_name}}, id = "${{matrix.project.kv_id}}"/g' wrangler.toml
+            sed -i 's/^binding = ".*", id = ".*"$/binding = "${{matrix.project.kv_name}}", id = "${{matrix.project.kv_id}}"/g' wrangler.toml
 
       - name: 删除旧的 workflows
         uses: Mattraks/delete-workflow-runs@v2
