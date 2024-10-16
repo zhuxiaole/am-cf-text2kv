@@ -7,14 +7,32 @@ env:
   TZ: Asia/Shanghai
 
 jobs:
+  get-projects:
+    name: 获取需要部署的项目名称
+    runs-on: ubuntu-latest
+
+    outputs:
+      projects: ${{ steps.get-projects.outputs.projects }}
+
+    steps:
+      - name: 获取需要部署的项目名称
+        id: get-projects
+        env:
+          PROJECT_NAMES: ${{ vars.PROJECT_NAMES }}
+        run: |
+          projects=$PROJECT_NAMES
+          projectArr=(${projects//,/ })
+          echo 'projects=$projectArr' >> "$GITHUB_OUTPUT"
+
   deploy:
     runs-on: ubuntu-latest
 
     name: 部署 ${{matrix.project}}
+    needs: get-projects
     strategy:
       fail-fast: false
       matrix:
-        project: ${{ vars.PROJECT_NAMES }}
+        project: ${{ fromJSON(needs.get-projects.outputs.projects) }}
 
     steps:
       - name: 检出仓库
@@ -40,4 +58,4 @@ jobs:
           token: ${{ secrets.GH_TOKEN }}
           repository: ${{ github.repository }}
           retain_days: 1
-          keep_minimum_runs: 10
+          keep_minimum_runs: 20
