@@ -149,9 +149,9 @@ http_code=\$\{BASH_REMATCH[2]\}
 errormsg=\$\{BASH_REMATCH[3]\}
 
 if [ $http_code = "200" ];then
-  echo -e "上传成功\n"
+  echo -e "上传成功\\n"
 else
-  echo -e "上传失败: $errormsg\n"
+  echo -e "上传失败: $errormsg\\n"
 fi
 
 `;
