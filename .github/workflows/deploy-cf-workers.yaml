@@ -20,11 +20,11 @@ jobs:
         env:
           PROJECT_NAMES: ${{ vars.PROJECT_NAMES }}
         run: |
-          projects=$PROJECT_NAMES
+          projectNames=$PROJECT_NAMES
+          projectArr=(${projectNames//,/ })
+          projects=$(echo ${projectArr[@]} | jq .)
           echo "${projects}"
-          projectArr=(${projects//,/ })
-          echo "${projectArr[@]}"
-          echo "projects=${projectArr[@]}" >> "$GITHUB_OUTPUT"
+          echo "projects=${projects}" >> "$GITHUB_OUTPUT"
 
   deploy:
     runs-on: ubuntu-latest
