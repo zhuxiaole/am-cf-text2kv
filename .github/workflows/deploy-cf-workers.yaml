@@ -24,7 +24,6 @@ jobs:
           projectArr=(${projectNames//,/ })
           unset projects
           for i in ${projectArr[@]}; do projects+="\"${i}\","; done
-          echo "${projects}"
           echo "projects=[${projects}]" >> "$GITHUB_OUTPUT"
 
   deploy:
@@ -44,16 +43,14 @@ jobs:
       - name: 初始化环境
         run: |
           sudo timedatectl set-timezone "Asia/Shanghai"
-      
-      - name: 配置 ${{matrix.project}}
-        run: |
-          sed 's/^name = ".*"$/name = "${{matrix.project}}"/g' wrangler.toml
 
       - name: 部署 ${{matrix.project}}
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          preCommands: |
+            sed 's/^name = ".*"$/name = "${{matrix.project}}"/g' wrangler.toml
 
       - name: 删除旧的 workflows
         uses: Mattraks/delete-workflow-runs@v2
