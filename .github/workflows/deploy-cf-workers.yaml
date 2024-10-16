@@ -51,6 +51,7 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           preCommands: |
             sed 's/^name = ".*"$/name = "${{matrix.project}}"/g' wrangler.toml
+            cat wrangler.toml
 
       - name: 删除旧的 workflows
         uses: Mattraks/delete-workflow-runs@v2
