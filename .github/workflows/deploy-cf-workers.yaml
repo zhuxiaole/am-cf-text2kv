@@ -1,18 +1,20 @@
-name: 部署到 Cloudflare Worker
+name: 部署 CF Workers
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 
 env:
   TZ: Asia/Shanghai
 
 jobs:
   deploy:
-    name: 部署到 Cloudflare Worker
     runs-on: ubuntu-latest
+
+    name: 部署 ${{matrix.project}}
+    strategy:
+      fail-fast: false
+      matrix:
+        project: ${{ vars.PROJECT_NAMES }}
 
     steps:
       - name: 检出仓库
@@ -21,8 +23,12 @@ jobs:
       - name: 初始化环境
         run: |
           sudo timedatectl set-timezone "Asia/Shanghai"
+      
+      - name: 配置 ${{matrix.project}}
+        run: |
+          sed 's/^name = ".*"$/name = "${{matrix.project}}"/g' wrangler.toml
 
-      - name: 部署
+      - name: 部署 ${{matrix.project}}
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
