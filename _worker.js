@@ -39,8 +39,11 @@ export default {
 };
 
 async function handleFileOperation(KV, fileName, request) {
-
-    if (request.method === "POST") {
+    if (request.method === "DELETE") {
+        // DELETE 请求，删除文件
+        await KV.delete(fileName);
+        return createResponse(`${fileName} 删除成功`, 200, 'text/plain; charset=utf-8');
+    } else if (request.method === "POST") {
         // POST 请求，修改文件内容
         const text = (await request.text())?.trim() || ""
 
