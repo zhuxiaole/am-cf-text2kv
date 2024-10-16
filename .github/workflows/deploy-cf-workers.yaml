@@ -1,7 +1,11 @@
 name: 部署 CF Workers
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '_worker.js'
 
 env:
   TZ: Asia/Shanghai
