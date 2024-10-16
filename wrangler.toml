@@ -1,7 +1,7 @@
 name = ""
 main = "./_worker.js"
 
-kv-namespaces = [
+kv_namespaces = [
     { binding = "", id = "" }
 ]
 
