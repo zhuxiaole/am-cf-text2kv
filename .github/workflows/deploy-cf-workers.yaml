@@ -23,6 +23,7 @@ jobs:
           projects=$PROJECT_NAMES
           echo "${projects}"
           projectArr=(${projects//,/ })
+          echo "${projectArr}"
           echo "projects=${projectArr}" >> "$GITHUB_OUTPUT"
 
   deploy:
