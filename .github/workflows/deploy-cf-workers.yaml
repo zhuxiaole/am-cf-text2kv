@@ -21,10 +21,7 @@ jobs:
           PROJECT_NAMES: ${{ vars.PROJECT_NAMES }}
         run: |
           projectNames=$PROJECT_NAMES
-          projectArr=(${projectNames//,/ })
-          projects=$(echo ${projectArr[@]} | jq .)
-          echo "${projects}"
-          echo "projects=${projects}" >> "$GITHUB_OUTPUT"
+          echo "projects=[${projectNames}]" >> "$GITHUB_OUTPUT"
 
   deploy:
     runs-on: ubuntu-latest
