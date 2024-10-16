@@ -1,3 +1,8 @@
-name = "am-cf-text2kv"
+name = ""
 main = "./_worker.js"
+
+kv-namespaces = [
+    { binding = "", id = "" }
+]
+
 compatibility_date = "2024-10-16"

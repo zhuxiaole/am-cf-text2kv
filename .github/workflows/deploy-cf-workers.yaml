@@ -19,21 +19,18 @@ jobs:
       projects: ${{ steps.get-projects.outputs.projects }}
 
     steps:
-      - name: 获取需要部署的项目名称
+      - name: 获取需要部署的项目
         id: get-projects
         env:
-          PROJECT_NAMES: ${{ vars.PROJECT_NAMES }}
+          PROJECTS: ${{ vars.PROJECTS }}
         run: |
-          projectNames=$PROJECT_NAMES
-          projectArr=(${projectNames//,/ })
-          unset projects
-          for i in ${projectArr[@]}; do projects+="\"${i}\","; done
-          echo "projects=[${projects}]" >> "$GITHUB_OUTPUT"
+          projects=$PROJECTS
+          echo "projects=${projects}" >> "$GITHUB_OUTPUT"
 
   deploy:
     runs-on: ubuntu-latest
 
-    name: 部署 ${{matrix.project}}
+    name: 部署 ${{matrix.project.name}}
     needs: get-projects
     strategy:
       fail-fast: false
@@ -48,13 +45,14 @@ jobs:
         run: |
           sudo timedatectl set-timezone "Asia/Shanghai"
 
-      - name: 部署 ${{matrix.project}}
+      - name: 部署 ${{matrix.project.name}}
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           preCommands: |
-            sed -i 's/^name = ".*"$/name = "${{matrix.project}}"/g' wrangler.toml
+            sed -i 's/^name = ".*"$/name = "${{matrix.project.name}}"/g' wrangler.toml
+            sed -i 's/^binding = ".*", id = ".*"$/binding = "${{matrix.project.kv_name}}, id = "${{matrix.project.kv_id}}"/g' wrangler.toml
 
       - name: 删除旧的 workflows
         uses: Mattraks/delete-workflow-runs@v2
